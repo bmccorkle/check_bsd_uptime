@@ -1,0 +1,244 @@
+#!/bin/sh
+##################
+# February 21st, 2019
+# Version 1.1
+# Author:  Brandon McCorkle
+# Purpose:  Checks the uptime on a FreeBSD System
+# Changelog:
+#	* 2/21/19 - Initial Release
+#	* 2/22/19 - Added Real Minutes / Percent Hour Option
+##############################
+VERSION="check_uptime v1.00 by Brandon McCorkle for FreeBSD"
+
+# Copyright (c) 2019, Brandon McCorkle <brandon.mccorkle@gmail.com>
+# All rights reserved.
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#	* Redistributions of source code must retain the above copyright
+#	  notice, this list of conditions and the following disclaimer.
+#	* Redistributions in binary form must reproduce the above copyright
+#	  notice, this list of conditions and the following disclaimer in the
+#	  documentation and/or other materials provided with the distribution.
+#	* Neither the name of the <organization> nor the
+#	  names of its contributors may be used to endorse or promote products
+#	  derived from this software without specific prior written permission.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL BRANDON MCCORKLE BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+#####
+#PROGRAM OPTIONS:
+#####
+## Use actual minutes instead of % of remaining hour
+## NSCLIENT++ and performance data use % of remaining hour
+## 0 = No / 1 = Yes
+REAL_MINUTES=0
+
+
+
+#####
+#ICINGA2 STATUS CODES:
+#####
+STATE_OK=0
+STATE_WARNING=1
+STATE_CRITICAL=2
+STATE_UNKNOWN=3
+
+
+
+#####
+#SET CONSTANTS (make things more readable in calculations below [FYI: SECnWEEK = Seconds in a Week])
+#####
+SECnMIN=60
+SECnHOUR=3600
+SECnDAY=86400
+SECnWEEK=604800
+MINnHOUR=60
+MINnDAY=1440
+MINnWEEK=10080
+HOURnDAY=24
+HOURnWEEK=168
+DAYnWEEK=7
+
+
+
+#####
+#HELP MESSAGE:
+#####
+display_help()
+{
+cat << EOF
+
+>>>>>>>>>>>>>>>>>>>>>>>
+usage: $0 [ -h ] [-c OPTION]|[-w OPTION] [-C OPTION]|[-W OPTION] [ -V ]
+
+This script checks uptime and optionally verifies if the uptime
+is below MINIMUM or above MAXIMUM uptime treshholds
+
+OPTIONS:
+   -h   Help
+   -c   CRIT min uptime (minutes)
+   -C   CRIT MAX uptime (minutes)
+   -w   WARN min uptime (minutes)
+   -W   WARN MAX uptime (minutes)
+   -V   Version
+<<<<<<<<<<<<<<<<<<<<<<<
+
+EOF
+}
+
+while getopts hc:w:C:W:V OPTION
+do
+     case $OPTION in
+        h)
+           display_help
+           exit $STATE_UNKNOWN
+           ;;
+	c)
+	   MIN_CRITICAL=`echo $OPTARG | grep -v "^-"`
+	   [ ! "$?" = 0 ] && echo "Error: missing or illegal option value" && \
+	   exit $STATE_UNKNOWN
+	   ;;
+	w)
+	   MIN_WARNING=`echo $OPTARG | grep -v "^-"`
+	   [ ! "$?" = 0 ] && echo "Error: missing or illegal option value" && \
+	   exit $STATE_UNKNOWN
+	   ;;
+	C)
+	   MAX_CRITICAL=`echo $OPTARG | grep -v "^-"`
+	   [ ! "$?" = 0 ] && echo "Error: missing or illegal option value" && \
+	   exit $STATE_UNKNOWN
+	   ;;
+	W)
+	   MAX_WARNING=`echo $OPTARG | grep -v "^-"`
+	   [ ! "$?" = 0 ] && echo "Error: missing or illegal option value" && \
+	   exit $STATE_UNKNOWN
+	  ;;
+	V)
+	   echo $VERSION
+	   exit $STATE_OK
+	   ;;
+	?)
+	   display_help
+	   exit $STATE_UNKNOWN
+	   ;;
+     esac
+done
+
+
+
+#####
+#GET OUR RAW DATA
+#####
+## Current DATE/TIME in seconds since epoch
+CURRENT_SECONDS=`date +%s`
+
+## Boot DATE/TIME in seconds since epoch (Works on FreeBSD)
+BOOT_SECONDS=`sysctl kern.boottime | awk '{printf $5}' | cut -f 1 -d ","`
+
+
+
+#####
+#CALC UPTIME AND LAST BOOT DATE/TIME
+#####
+## Uptime in seconds
+UPTIME_SECONDS=$(( CURRENT_SECONDS - BOOT_SECONDS ))
+
+## Uptime in minutes
+UPTIME_MINUTES=$(( UPTIME_SECONDS / 60 ))
+
+## Last Boot DATE/TIME
+BOOTDATE=`date -u -v-${UPTIME_SECONDS}S +"%Y-%m-%d% %H:%M:%S (UTC)"`
+
+
+
+#####
+#CALC UPTIME
+#####
+## Number of weeks up
+NUM_WEEKS=$(( UPTIME_SECONDS / SECnWEEK ))
+
+## Number of days up (Minus Weeks)
+NUM_DAYS=$(( UPTIME_SECONDS / SECnDAY - NUM_WEEKS * DAYnWEEK ))
+
+## Number of HOURS/MINUTES Options:
+if [ $REAL_MINUTES -eq 1 ] ; then
+	## Number of hours up (Minus Weeks/Days)
+        NUM_HOURS=$(( UPTIME_SECONDS / SECnHOUR - NUM_WEEKS * HOURnWEEK - NUM_DAYS * HOURnDAY ))
+
+	## Number of minutes up (Minus Weeks/Days/Hours)
+        NUM_MINUTES=$(( UPTIME_SECONDS / SECnMIN - NUM_WEEKS * MINnWEEK - NUM_DAYS * MINnDAY - NUM_HOURS * $MINnHOUR ))
+
+	NUM_HOURS=$NUM_HOURS:$NUM_MINUTES
+else
+	## Use Percentage of hour remaining instead of real minutes
+	NUM_HOURS=$(echo "scale=2; $UPTIME_SECONDS / $SECnHOUR - $NUM_WEEKS * $HOURnWEEK - $NUM_DAYS * $HOURnDAY" | bc -l | tr '.' ':')
+fi
+
+
+
+#####
+#CALC MINIMUM WARN/CRIT SECONDS
+#####
+if [ $MIN_WARNING ] ; then
+        WARN_SECONDS=$(( MIN_WARNING * 60 ))
+fi
+if [ $MIN_CRITICAL ] ; then
+        CRIT_SECONDS=$(( MIN_CRITICAL * 60 ))
+fi
+
+
+
+#####
+#FORMAT RETURN MSG (TRY TO MATCH NSCLIENT++)
+#####
+if [ $NUM_WEEKS -ge 1 ] ; then
+	RETURN_MSG="uptime: ${NUM_WEEKS}w ${NUM_DAYS}d ${NUM_HOURS}h, boot: $BOOTDATE"
+elif [ $NUM_WEEKS -eq 0 -a $NUM_DAYS -ge 1 ] ; then 	
+	RETURN_MSG="uptime: ${NUM_DAYS}d ${NUM_HOURS}h, boot: $BOOTDATE"
+else
+        RETURN_MSG="uptime: ${NUM_HOURS}h, boot: $BOOTDATE"
+fi
+
+
+
+#####
+#FORMAT PERFORMANCE DATA
+#####
+PERF_DATA="'uptime'=${UPTIME_SECONDS}s;${WARN_SECONDS};${CRIT_SECONDS}"
+
+
+
+#####
+#RETURN UPTIME MSG/STATUS AND EXIT  
+#####
+if [ $MIN_CRITICAL ] && [ $UPTIME_MINUTES -lt $MIN_CRITICAL ] ; then
+	echo "CRITICAL: $RETURN_MSG | $PERF_DATA"
+	exit $STATE_CRITICAL
+
+  elif [ $MIN_WARNING ] && [ $UPTIME_MINUTES -lt $MIN_WARNING ] ; then
+	echo "WARNING: $RETURN_MSG | $PERF_DATA"
+	exit $STATE_WARNING
+
+  elif [ $MAX_CRITICAL ] && [ $UPTIME_MINUTES -gt $MAX_CRITICAL ] ; then
+	echo "CRITICAL: $RETURN_MSG | $PERF_DATA"
+	exit $STATE_CRITICAL
+
+  elif [ $MAX_WARNING ] && [ $UPTIME_MINUTES -gt $MAX_WARNING ] ; then
+	echo "WARNING: $RETURN_MSG | $PERF_DATA"
+	exit $STATE_WARNING
+  else
+	echo "OK: $RETURN_MSG | $PERF_DATA"
+	exit $STATE_OK
+fi
