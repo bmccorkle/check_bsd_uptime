@@ -6,10 +6,9 @@ This script checks uptime and optionally verifies if the uptime
 is below MINIMUM or above MAXIMUM uptime threshholds.
 
 OPTIONS:
-	-h	help
 	
 	-h   Help
 	-c   CRIT min uptime (minutes)
 	-w   WARN min uptime (minutes)
-	-f	  Flip Thresholds (MAX minutes instead of minimum)
+	-f   Flip Thresholds (MAX minutes instead of minimum)
 	-V   Version
