@@ -8,5 +8,5 @@ OPTIONS:
    -h   Help
    -c   CRIT min uptime (minutes)
    -w   WARN min uptime (minutes)
-   -f	Flip Thresholds (MAX minutes instead of minimum)
+   -f	  Flip Thresholds (MAX minutes instead of minimum)
    -V   Version
