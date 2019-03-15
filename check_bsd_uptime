@@ -7,7 +7,7 @@
 # Changelog:
 #	* 2/21/19 - Initial Release
 #	* 2/22/19 - Added Real Minutes / Percent Hour Option
-#	* 3/14/19 - Added -f option
+#	* 3/14/19 - Added -f Option
 ##############################
 VERSION="check_uptime v1.00 by Brandon McCorkle for FreeBSD"
 
@@ -41,7 +41,7 @@ VERSION="check_uptime v1.00 by Brandon McCorkle for FreeBSD"
 #####
 #PROGRAM OPTIONS:
 #####
-## Use real minutes instead of % of remaining hour
+## Use actual minutes instead of % of remaining hour
 ## NSCLIENT++ and performance data use % of remaining hour
 ## 0 = No / 1 = Yes
 REAL_MINUTES=0
@@ -82,7 +82,7 @@ display_help()
 cat << EOF
 
 >>>>>>>>>>>>>>>>>>>>>>>
-usage: $0 [ -h ] [-c OPTION]|[-w OPTION] [-C OPTION]|[-W OPTION] [ -V ]
+usage: $0 [ -h ] [-c OPTION] [-w OPTION] [-f OPTION] [ -V ]
 
 This script checks uptime and optionally verifies if the uptime
 is below MINIMUM or above MAXIMUM uptime treshholds
@@ -90,16 +90,15 @@ is below MINIMUM or above MAXIMUM uptime treshholds
 OPTIONS:
    -h   Help
    -c   CRIT min uptime (minutes)
-   -C   CRIT MAX uptime (minutes)
    -w   WARN min uptime (minutes)
-   -W   WARN MAX uptime (minutes)
+   -f	Flip Thresholds (MAX minutes instead of minimum)
    -V   Version
 <<<<<<<<<<<<<<<<<<<<<<<
 
 EOF
 }
 
-while getopts hc:w:C:W:V OPTION
+while getopts hc:w:fV OPTION
 do
      case $OPTION in
         h)
@@ -116,16 +115,9 @@ do
 	   [ ! "$?" = 0 ] && echo "Error: missing or illegal option value" && \
 	   exit $STATE_UNKNOWN
 	   ;;
-	C)
-	   MAX_CRITICAL=`echo $OPTARG | grep -v "^-"`
-	   [ ! "$?" = 0 ] && echo "Error: missing or illegal option value" && \
-	   exit $STATE_UNKNOWN
-	   ;;
-	W)
-	   MAX_WARNING=`echo $OPTARG | grep -v "^-"`
-	   [ ! "$?" = 0 ] && echo "Error: missing or illegal option value" && \
-	   exit $STATE_UNKNOWN
-	  ;;
+        f)
+	   FLIP_THRESHOLDS=1
+           ;;
 	V)
 	   echo $VERSION
 	   exit $STATE_OK
@@ -224,22 +216,26 @@ PERF_DATA="'uptime'=${UPTIME_SECONDS}s;${WARN_SECONDS};${CRIT_SECONDS}"
 #####
 #RETURN UPTIME MSG/STATUS AND EXIT  
 #####
-if [ $MIN_CRITICAL ] && [ $UPTIME_MINUTES -lt $MIN_CRITICAL ] ; then
-	echo "CRITICAL: $RETURN_MSG | $PERF_DATA"
-	exit $STATE_CRITICAL
-
-  elif [ $MIN_WARNING ] && [ $UPTIME_MINUTES -lt $MIN_WARNING ] ; then
-	echo "WARNING: $RETURN_MSG | $PERF_DATA"
-	exit $STATE_WARNING
-
-  elif [ $MAX_CRITICAL ] && [ $UPTIME_MINUTES -gt $MAX_CRITICAL ] ; then
-	echo "CRITICAL: $RETURN_MSG | $PERF_DATA"
-	exit $STATE_CRITICAL
-
-  elif [ $MAX_WARNING ] && [ $UPTIME_MINUTES -gt $MAX_WARNING ] ; then
-	echo "WARNING: $RETURN_MSG | $PERF_DATA"
-	exit $STATE_WARNING
-  else
-	echo "OK: $RETURN_MSG | $PERF_DATA"
-	exit $STATE_OK
+if [ $FLIP_THRESHOLDS ] ; then
+        if [ $MIN_CRITICAL ] && [ $UPTIME_MINUTES -gt $MIN_CRITICAL ] ; then
+                echo "CRITICAL: $RETURN_MSG | $PERF_DATA"
+                exit $STATE_CRITICAL
+        elif [ $MIN_WARNING ] && [ $UPTIME_MINUTES -gt $MIN_WARNING ] ; then
+                echo "WARNING: $RETURN_MSG | $PERF_DATA"
+                exit $STATE_WARNING
+        else
+                echo "OK: $RETURN_MSG | $PERF_DATA"
+                exit $STATE_OK
+        fi
+else
+        if [ $MIN_CRITICAL ] && [ $UPTIME_MINUTES -lt $MIN_CRITICAL ] ; then
+                echo "CRITICAL: $RETURN_MSG | $PERF_DATA"
+                exit $STATE_CRITICAL
+        elif [ $MIN_WARNING ] && [ $UPTIME_MINUTES -lt $MIN_WARNING ] ; then
+                echo "WARNING: $RETURN_MSG | $PERF_DATA"
+                exit $STATE_WARNING
+        else
+                echo "OK: $RETURN_MSG | $PERF_DATA"
+                exit $STATE_OK
+        fi
 fi
