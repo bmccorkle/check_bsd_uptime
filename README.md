@@ -3,7 +3,8 @@ Monitoring Plugin to check FreeBSD Uptime
 
 
 This script checks uptime and optionally verifies if the uptime
-is below MINIMUM or above MAXIMUM uptime threshholds.
+is below MINIMUM or above MAXIMUM uptime threshholds.  Creates 
+performance data.
 
 OPTIONS:
 	
