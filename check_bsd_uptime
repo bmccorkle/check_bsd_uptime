@@ -7,6 +7,7 @@
 # Changelog:
 #	* 2/21/19 - Initial Release
 #	* 2/22/19 - Added Real Minutes / Percent Hour Option
+#	* 3/14/19 - Added -f option
 ##############################
 VERSION="check_uptime v1.00 by Brandon McCorkle for FreeBSD"
 
@@ -40,7 +41,7 @@ VERSION="check_uptime v1.00 by Brandon McCorkle for FreeBSD"
 #####
 #PROGRAM OPTIONS:
 #####
-## Use actual minutes instead of % of remaining hour
+## Use real minutes instead of % of remaining hour
 ## NSCLIENT++ and performance data use % of remaining hour
 ## 0 = No / 1 = Yes
 REAL_MINUTES=0
