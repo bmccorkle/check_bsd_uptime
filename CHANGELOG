@@ -1,5 +1,5 @@
 # Changelog:
-#	2/21/19 - Initial Release
+# 2/21/19 - Initial Release
 #	2/22/19 - Added Real Minutes / Percent Hour Option
 #	3/14/19 - Added -f Option and removed separate WARN/CRIT Max Uptime Options
 # 8/16/21 - Added Grafana Panel JSON
