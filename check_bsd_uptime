@@ -9,7 +9,7 @@
 #	* 2/22/19 - Added Real Minutes / Percent Hour Option
 #	* 3/14/19 - Added -f Option
 ##############################
-VERSION="check_uptime v1.00 by Brandon McCorkle for FreeBSD"
+VERSION="check_bsd_uptime v1.00 by Brandon McCorkle for FreeBSD"
 
 # Copyright (c) 2019, Brandon McCorkle <brandon.mccorkle@gmail.com>
 # All rights reserved.
